@@ -4,6 +4,7 @@ import requests
 import base64
 import json, time, copy, random
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from tools import *
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -34,31 +35,6 @@ class TGFW:
             return
         else:
             return response
-        
-    def _get_token(self):
-        #获取设备的token
-        data = json.dumps({
-            "id": self.username,
-            "val": {
-            "username": self.username,
-            "passwd": base64.b64encode(self.password.encode('utf-8')).decode('utf-8'),
-            "action": "login",
-            "autht": 0,
-            "code": "",
-            }
-        })
-        response = requests.put(self.construct_url('/api/v1/auth'), data=data, verify=False)
-        if response.status_code == 200:         
-            return response.json()['token']
-        else:
-            return response.status_code
-        
-    def __enter__(self):
-        self.token = self._get_token()
-        return self
-    
-    def __exit__(self, ex_type, exc_val, exc_tb):
-        requests.get(self.construct_url('/api/v1/logout'), headers= {'Authorization': f'Bearer {self.token}'}, verify=False)
 
     def generate_random_ip4pool(self, num, pool_num):
         # 生成随机IPv4地址对象
@@ -110,7 +86,6 @@ class TGFW:
             temp_template['val']['ranges'] = range_list
 
             ip4_random_pools.append(temp_template)
-
         return ip4_random_pools
 
     def generate_ip4pool(self, base_ip, num, step=1):
@@ -126,12 +101,12 @@ class TGFW:
             }]
             }}        
         ip4pools = []
+        ips = generate_ipv4_list(base_ip, num, step)
         for i in range(num):
             temp_template = copy.deepcopy(template)
             temp_template['val']['name'] = f'address{i+1}'
-            temp_template['val']['networks'][0]['ipaddr'] = '.'.join(str(int(x) + i * step) for x in base_ip.split('.'))
+            temp_template['val']['networks'][0]['ipaddr'] = ips[i]
             ip4pools.append(temp_template)
-
         return ip4pools
 
     def generate_ip4policy(self, num:int, addr_pools:list, service_pools:list):
@@ -238,6 +213,31 @@ class TGFW:
        
         return server_pool
 
+    def _get_token(self):
+        #获取设备的token
+        data = json.dumps({
+            "id": self.username,
+            "val": {
+            "username": self.username,
+            "passwd": base64.b64encode(self.password.encode('utf-8')).decode('utf-8'),
+            "action": "login",
+            "autht": 0,
+            "code": "",
+            }
+        })
+        response = requests.put(self.construct_url('/api/v1/auth'), data=data, verify=False)
+        if response.status_code == 200:         
+            return response.json()['token']
+        else:
+            return response.status_code
+        
+    def __enter__(self):
+        self.token = self._get_token()
+        return self
+    
+    def __exit__(self, ex_type, exc_val, exc_tb):
+        requests.get(self.construct_url('/api/v1/logout'), headers= {'Authorization': f'Bearer {self.token}'}, verify=False)
+
 with TGFW('10.113.54.162', 'admin', 'Ngfw@123') as device:
     headers = {'Authorization': f'Bearer {device.token}',
           'Content-Type': 'application/json'}
@@ -267,15 +267,15 @@ with TGFW('10.113.54.162', 'admin', 'Ngfw@123') as device:
 
     #若需要实现批量添加配置，则需要考虑配置生成
 
-    ip4pools = device.generate_serverpool(100, 6, 7, 10000)
-    # print(ip4pools, len(ip4pools))
-    addr_pool_list = []
-    server_pool_list = []
-    for pool in ip4pools:
+    ip4pools = device.generate_ip4pool('3.3.3.2', 20, 256)
+    print(ip4pools, len(ip4pools))
+    # addr_pool_list = []
+    # server_pool_list = []
+    # for pool in ip4pools:
 
-        result = device.request('post', '/api/v1/servicepool', headers=headers, data=pool)
-        if result:
-            addr_pool_list.append(result)
-        time.sleep(0.5)
+    #     result = device.request('post', '/api/v1/servicepool', headers=headers, data=pool)
+    #     if result:
+    #         addr_pool_list.append(result)
+    #     time.sleep(0.5)
     
-    print(addr_pool_list)
+    # print(addr_pool_list)

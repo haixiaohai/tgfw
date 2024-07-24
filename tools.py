@@ -77,5 +77,3 @@ def nptv6_addr_trans():
 
     
     return
-
-print(nat64addr('64:ff9b::/32', '110.2.2.2'))

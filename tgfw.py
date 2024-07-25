@@ -1,14 +1,13 @@
 #连接TGFW
 
-import requests
-import base64
-import json, time, copy, random
+import requests, base64, ipaddress, json, time, copy, random
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from tools import *
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 class TGFW:
+    # 操作TGFW设备
     def __init__(self, ip, username, password, port=443):
         self.ip = ip
         self.username = username
@@ -36,7 +35,7 @@ class TGFW:
         else:
             return response
 
-    def generate_random_ip4pool(self, num, pool_num):
+    def generate_random_ip4addr_obj(self, num, pool_num):
         # 生成随机IPv4地址对象
         # num: 生成对象数量
         # pool_num: 每个对象包含的最大地址数量
@@ -88,7 +87,7 @@ class TGFW:
             ip4_random_pools.append(temp_template)
         return ip4_random_pools
 
-    def generate_ip4pool(self, base_ip, num, step=1):
+    def generate_ip4addr_obj(self, base_ip, num, step=1):
         #基于base_ip生成num个ip地址对象，默认递增步进是1
         template = {
             "val": {
@@ -108,6 +107,14 @@ class TGFW:
             temp_template['val']['networks'][0]['ipaddr'] = ips[i]
             ip4pools.append(temp_template)
         return ip4pools
+
+    def generate_ip4addr_group_obj(self):
+        pass
+    
+    def generate_domainName_obj(self):
+        pass
+
+    
 
     def generate_ip4policy(self, num:int, addr_pools:list, service_pools:list):
         #生成ip4安全策略对象
@@ -176,7 +183,8 @@ class TGFW:
 
         return policy_pools
     
-    def generate_serverpool(self, num:int, protocol:int, pool_num:int, sport:int=10000) -> list:
+    def generate_server_obj(self, num:int, protocol:int, pool_num:int, sport:int=10000) -> list:
+        #生成自定义服务配置
         template = {
         "id": "serverpool1",
         "val": {
@@ -238,9 +246,30 @@ class TGFW:
     def __exit__(self, ex_type, exc_val, exc_tb):
         requests.get(self.construct_url('/api/v1/logout'), headers= {'Authorization': f'Bearer {self.token}'}, verify=False)
 
-with TGFW('10.113.54.162', 'admin', 'Ngfw@123') as device:
-    headers = {'Authorization': f'Bearer {device.token}',
-          'Content-Type': 'application/json'}
+
+class render:
+    # 根据拓扑渲染出TGFW和辅测设备的配置，需要传入拓扑、互联网段、业务网段、
+
+    def __init__(self):        
+        pass
+    
+    def generate_subnetwork(self, network, number, mask=30):
+        # 根据地址池生成子网段，需要判断地址池是否合法
+
+        network = ipaddress.ip_network(network)
+        network2 = network.subnets(new_prefix=mask)
+        rst = []
+        for i in range(number):
+            try:
+                rst.append(next(network2).compressed)
+            except StopIteration:
+                raise ValueError(f'地址池不足，需要{number}个地址，但只有{len(rst)}个可用')
+        return rst
+
+
+# with TGFW('10.113.54.162', 'admin', 'Ngfw@123') as device:
+#     headers = {'Authorization': f'Bearer {device.token}',
+#           'Content-Type': 'application/json'}
     
     # 循环禁用启用可以用request方法写
     # disable_data = {
@@ -267,8 +296,8 @@ with TGFW('10.113.54.162', 'admin', 'Ngfw@123') as device:
 
     #若需要实现批量添加配置，则需要考虑配置生成
 
-    ip4pools = device.generate_ip4pool('3.3.3.2', 20, 256)
-    print(ip4pools, len(ip4pools))
+    # ip4pools = device.generate_ip4pool('3.3.3.2', 20, 256)
+    # print(ip4pools, len(ip4pools))
     # addr_pool_list = []
     # server_pool_list = []
     # for pool in ip4pools:
@@ -279,3 +308,8 @@ with TGFW('10.113.54.162', 'admin', 'Ngfw@123') as device:
     #     time.sleep(0.5)
     
     # print(addr_pool_list)
+
+
+config = render()
+
+print(config.generate_subnetwork('192.168.0.0/20', 100, 29))

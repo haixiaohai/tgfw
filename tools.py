@@ -77,3 +77,18 @@ def nptv6_addr_trans():
 
     
     return
+
+
+def hex_to_ascii(hex_string):
+    # 16进制字符串转ASCII字符串
+
+    # 去掉空格，确保字节串连续
+    hex_string = hex_string.replace(" ", "")
+    
+    # 将十六进制字符串转换为字节
+    bytes_object = bytes.fromhex(hex_string)
+    
+    # 将字节转换为 ASCII 字符串，无法显示的字符用替代符号表示
+    ascii_string = bytes_object.decode("ascii", errors="replace")
+    
+    return ascii_string

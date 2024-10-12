@@ -25,12 +25,12 @@ class TGFW:
         data = kwargs['data'] if 'data' in kwargs else None
         response = method(self.construct_url(url),  
                           headers=header,
-                          data=json.dumps(data),
+                          data=data,
                           verify=False)
         
         if response.status_code == 200:
-            if 'name' in kwargs['data']['val']:
-                return kwargs['data']['val']['name']
+            # if 'name' in kwargs['data']['val']:
+            #     return kwargs['data']['val']['name']
             return
         else:
             return response
@@ -267,32 +267,247 @@ class render:
         return rst
 
 
-# with TGFW('10.113.54.162', 'admin', 'Ngfw@123') as device:
-#     headers = {'Authorization': f'Bearer {device.token}',
-#           'Content-Type': 'application/json'}
+with TGFW('10.113.55.83', 'admin', 'Ngfw@123') as device:
+    headers = {'Authorization': f'Bearer {device.token}',
+          'Content-Type': 'application/json'}
     
     # 循环禁用启用可以用request方法写
-    # disable_data = {
-    # "id": 7,
-    # "val": {
-    #     "id": 7,
-    #     "dst_network": "13.1.1.2/32",
-    #     "enable": False,
-    #     "next_hop_addr": "11.11.11.2",
-    #     "weight": 0,
-    #     "preference": 1,
-    #     "outgoing_interface": ""
-    # }}
+    disable_data = {
+    "id": "GE0_3",
+    "val": {
+        "linkType": 0,
+        "name": "GE0_3",
+        "type": 3,
+        "enabled": False,
+        "vltype": "VPP",
+        "mode": "Route",
+        "service": {
+            "https": False,
+            "ssh": False,
+            "ping": False
+        },
+        "sip": [],
+        "smac": [],
+        "ipv4_address_mode_config": {
+            "address_mode": 0,
+            "dhcp_client_setting": {}
+        },
+        "ipv6_address_mode_config": {
+            "address_mode": 0,
+            "dhcp_client_setting": {}
+        },
+        "ip_addresses": []
+    }
+}
     # enable_data = copy.deepcopy(disable_data)
     # enable_data['val']['enable'] = True
-    # number = 100000
 
-    # while number > 0:
-    #     device_a.request('put', '/api/v1/route', headers=header, data=json.dumps(enable_data))
-    #     time.sleep(.5)
-    #     device_a.request('put', '/api/v1/route', headers=header, data=json.dumps(disable_data))
-    #     time.sleep(1)
-    #     number -= 1
+    enable_data = {
+    "id": "GE0_3",
+    "val": {
+        "linkType": 0,
+        "name": "GE0_3",
+        "type": 3,
+        "enabled": True,
+        "vltype": "VPP",
+        "mode": "Route",
+        "service": {
+            "https": False,
+            "ssh": False,
+            "ping": False
+        },
+        "sip": [],
+        "smac": [],
+        "ipv4_address_mode_config": {
+            "address_mode": 0,
+            "dhcp_client_setting": {}
+        },
+        "ipv6_address_mode_config": {
+            "address_mode": 0,
+            "dhcp_client_setting": {}
+        },
+        "ip_addresses": []
+    }
+}
+    
+    haswitch = {
+    "id": 1,
+    "val": {
+        "forceSwitch": True
+    }
+}
+    number = 200
+
+    policy1 = {
+    "id": 1,
+    "val": {
+        "enable": True,
+        "session_switch": False,
+        "action": 1,
+        "session_time": 0,
+        "policy_group": "全部",
+        "desc": "",
+        "szone": "any",
+        "dzone": "any",
+        "src_mac": [
+            {
+                "addr_name": "any"
+            }
+        ],
+        "src_dns": [
+            {
+                "dns_name": "any"
+            }
+        ],
+        "dst_mac": [
+            {
+                "addr_name": "any"
+            }
+        ],
+        "dst_dns": [
+            {
+                "dns_name": "any"
+            }
+        ],
+        "src_geo": [],
+        "dst_geo": [],
+        "name": "1",
+        "log": True,
+        "src_addr": [
+            {
+                "addr_name": "any",
+                "is_group": False
+            }
+        ],
+        "dst_addr": [
+            {
+                "addr_name": "any",
+                "is_group": False
+            }
+        ],
+        "service": [
+            {
+                "service_name": "any",
+                "is_group": False
+            }
+        ],
+        "applist": [],
+        "userlist": [],
+        "app_tag_name": [],
+        "sec_obj_data": [
+            {
+                "profile_id": 1,
+                "profile_name": "qzgaj",
+                "model_name": "av"
+            },
+            {
+                "profile_id": 1001,
+                "profile_name": "qzgaj",
+                "model_name": "ips"
+            },
+            {
+                "profile_id": 1,
+                "profile_name": "恶意域名",
+                "model_name": "urlFilter"
+            },
+            {
+                "profile_id": 1,
+                "profile_name": "qzgaj",
+                "model_name": "dga"
+            }
+        ]
+    }
+}
+    
+    policy2 = {
+    "id": 1,
+    "val": {
+        "enable": True,
+        "session_switch": False,
+        "action": 1,
+        "session_time": 0,
+        "policy_group": "全部",
+        "desc": "",
+        "szone": "any",
+        "dzone": "any",
+        "src_mac": [
+            {
+                "addr_name": "any"
+            }
+        ],
+        "src_dns": [
+            {
+                "dns_name": "any"
+            }
+        ],
+        "dst_mac": [
+            {
+                "addr_name": "any"
+            }
+        ],
+        "dst_dns": [
+            {
+                "dns_name": "any"
+            }
+        ],
+        "src_geo": [],
+        "dst_geo": [],
+        "name": "1",
+        "log": True,
+        "src_addr": [
+            {
+                "addr_name": "any",
+                "is_group": False
+            }
+        ],
+        "dst_addr": [
+            {
+                "addr_name": "any",
+                "is_group": False
+            }
+        ],
+        "service": [
+            {
+                "service_name": "any",
+                "is_group": False
+            }
+        ],
+        "applist": [],
+        "userlist": [],
+        "app_tag_name": [],
+        "sec_obj_data": [
+            {
+                "profile_id": 1,
+                "profile_name": "qzgaj",
+                "model_name": "av"
+            },
+            {
+                "profile_id": 1002,
+                "profile_name": "allrule",
+                "model_name": "ips"
+            },
+            {
+                "profile_id": 1,
+                "profile_name": "恶意域名",
+                "model_name": "urlFilter"
+            },
+            {
+                "profile_id": 1,
+                "profile_name": "qzgaj",
+                "model_name": "dga"
+            }
+        ]
+    }
+}
+
+    while number > 0:
+        # d = json.dumps(disable_data)
+        # e = json.dumps(enable_data)
+        device.request('put', '/api/v1/intf', headers=headers, data=json.dumps(disable_data))
+        time.sleep(30)
+        device.request('put', '/api/v1/intf', headers=headers, data=json.dumps(enable_data))
+        time.sleep(30)
+        number -= 1
 
     #若需要实现批量添加配置，则需要考虑配置生成
 
@@ -310,6 +525,6 @@ class render:
     # print(addr_pool_list)
 
 
-config = render()
+# config = render()
 
-print(config.generate_subnetwork('192.168.0.0/20', 100, 29))
+# print(config.generate_subnetwork('192.168.0.0/20', 100, 29))

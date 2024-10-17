@@ -88,7 +88,7 @@ if __name__ == '__main__':
     current_bug_status_df = get_bug_status(bug_ids).set_index('Bug编号') # 获取当前bug状态数据，Bug编号是索引
 
     # 对比BUG编号，检查是否有新增，若有新增，将新增的BUG保存到一个DataFrame
-    # 需要修改为根据Bug ID判断，因为Bug可以修改
+    # 需要修改为根据Bug ID判断，因为Bug标题可以修改
     mask = current_bug_status_df['Bug标题'].isin(last_week_bug_status_df['Bug标题'])
     increase_bug_df = current_bug_status_df[~mask]
 
@@ -100,8 +100,8 @@ if __name__ == '__main__':
             if last_week_bug_status_df.loc[bug_id, 'Bug状态'] != current_bug_status_df.loc[str(bug_id), 'Bug状态']:
                 change_bug_df.loc[len(change_bug_df)] = current_bug_status_df.loc[str(bug_id)]
     
-    #最新的BUG状态数据写入文件之前将原来的文件备份到上周数据中（LAST WEEK STATUS)
-    # pandas.read_excel(output_file).to_excel(input_file2, index=False)
+    # 最新的BUG状态数据写入文件之前将原来的文件备份到上周数据中（LAST WEEK STATUS)
+    pandas.read_excel(output_file).to_excel(input_file2, index=False)
     
     # 将最新数据写入文件
     with pandas.ExcelWriter(output_file) as writer:

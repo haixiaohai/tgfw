@@ -1,10 +1,15 @@
 #连接TGFW
 
-import requests, base64, ipaddress, json, time, copy, random
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-from tools import *
+import requests, base64, ipaddress, copy, random, re, pytesseract
+from requests.packages.urllib3.exceptions import InsecureRequestWarning # type: ignore
+from tools import * # type: ignore
+from PIL import Image
+from io import BytesIO
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 
 class TGFW:
     # 操作TGFW设备
@@ -15,27 +20,28 @@ class TGFW:
         self.port = port
         self.token = None
 
+    @staticmethod
+    def static_always_inline() -> int:
+        # Implementation of the static method
+        return 64
+
     def construct_url(self, uri):
         return f'https://{self.ip}:{self.port}{uri}'
     
-    def request(self, method, url, **kwargs):
+    def request(self, method:str, uri:str, **kwargs) -> tuple:
         #若成功下发，返回操作成功的对象name，若失败，返回的status_code和message
         method = getattr(requests, method.lower())
-        header = kwargs['headers'] if 'headers' in kwargs else '{"Content-Type": "application/json"}'      
-        data = kwargs['data'] if 'data' in kwargs else None
-        response = method(self.construct_url(url),  
-                          headers=header,
-                          data=data,
-                          verify=False)
+        header = kwargs['headers'] if 'headers' in kwargs else {"Content-Type": "application/json"}  
+        data = kwargs['data'] if 'data' in kwargs else {}
         
-        if response.status_code == 200:
-            # if 'name' in kwargs['data']['val']:
-            #     return kwargs['data']['val']['name']
-            return
+        #如果传进来了header和data，，需要判断header和da的类型
+        if isinstance(data, dict) and isinstance(header, dict):
+            response = method(self.construct_url(uri), headers=header, json=data, verify=False)
         else:
-            return response
+            raise TypeError("header和data必须为字典类型")        
+        return response  # 不同的请求返回的内容不同，引用时自行判断
 
-    def generate_random_ip4addr_obj(self, num, pool_num):
+    def generate_random_ip4addr_obj(self, num, pool_num) -> list:
         # 生成随机IPv4地址对象
         # num: 生成对象数量
         # pool_num: 每个对象包含的最大地址数量
@@ -111,11 +117,6 @@ class TGFW:
     def generate_ip4addr_group_obj(self):
         pass
     
-    def generate_domainName_obj(self):
-        pass
-
-    
-
     def generate_ip4policy(self, num:int, addr_pools:list, service_pools:list):
         #生成ip4安全策略对象
         template = {
@@ -222,22 +223,60 @@ class TGFW:
         return server_pool
 
     def _get_token(self):
-        #获取设备的token
-        data = json.dumps({
+        '''
+        获取设备的token
+        '''
+
+        # 获取公钥，第一步先从HTML中解析到公钥文件名，然后再get公钥内容
+        r = self.request('get', '', headers={'Content-Type': 'text/html'})
+        public_key_filename = re.findall(r'ras_public_key.\d+.js', r.text)[0]
+        js_text = self.request('get', '/js/'+public_key_filename, headers={'Content-Type': 'application/javascript'}).text
+        lines = re.findall(r"'(.*?)'", js_text, re.DOTALL) 
+        public_key_pem = '\n'.join([line.replace('\\n', '').strip() for line in lines])  #公钥
+
+        # 加载公钥
+        from cryptography.hazmat.backends import default_backend
+        public_key = serialization.load_pem_public_key(public_key_pem.encode(), backend=default_backend())
+        encrypted_password = public_key.encrypt(self.password.encode('utf-8'),padding.PKCS1v15())
+        encrypted_password_b64 = base64.b64encode(encrypted_password).decode('utf-8')
+        # print(encrypted_password_b64)
+
+        # 获取验证码  uri = /api/v1/getAuthConfig
+        captcha_data = {
+        "id": "verify",
+        "val": {}
+        }
+        captcha_response = self.request('put', '/api/v1/getAuthConfig', data=captcha_data)
+        if captcha_response.status_code != 200:
+            raise Exception('获取验证码失败')
+            exit(1)
+
+        captche_img = captcha_response.json()['data']
+        verify_id = captcha_response.json()['vertifyid']
+
+        # 解析验证码
+        captcha_img_base64 = captche_img.split(",")[1]
+        img_bytes = base64.b64decode(captcha_img_base64)
+        img = Image.open(BytesIO(img_bytes))
+        text = pytesseract.image_to_string(img)   
+
+        data = {
             "id": self.username,
             "val": {
             "username": self.username,
-            "passwd": base64.b64encode(self.password.encode('utf-8')).decode('utf-8'),
+            "passwd": encrypted_password_b64,
             "action": "login",
             "autht": 0,
             "code": "",
+            "vertifycode": text.replace(' ', '').strip(),
+            "vertifyid": verify_id
             }
-        })
-        response = requests.put(self.construct_url('/api/v1/auth'), data=data, verify=False)
+        }
+        response = self.request('put', '/api/v1/auth', data=data)
         if response.status_code == 200:         
             return response.json()['token']
-        else:
-            return response.status_code
+        else:           
+            return response.status_code, response.text
         
     def __enter__(self):
         self.token = self._get_token()
@@ -267,16 +306,28 @@ class render:
         return rst
 
 
-with TGFW('10.113.55.83', 'admin', 'Ngfw@123') as device:
+with TGFW('10.113.55.147', 'admin', 'Ngfw@123') as device:
+
+    #需要判断有没有正常获取到token
+
     headers = {'Authorization': f'Bearer {device.token}',
-          'Content-Type': 'application/json'}
+               'Content-Type': 'application/json',
+               'charset': 'utf-8'
+                }
     
     # 循环禁用启用可以用request方法写
-    disable_data = {
-    "id": "GE0_3",
+    number = 100
+    down_interface =  {
+    "id": "GE0_9",
     "val": {
         "linkType": 0,
-        "name": "GE0_3",
+        "mtus": [
+            1500,
+            0,
+            0,
+            0
+        ],
+        "name": "GE0_9",
         "type": 3,
         "enabled": False,
         "vltype": "VPP",
@@ -284,29 +335,37 @@ with TGFW('10.113.55.83', 'admin', 'Ngfw@123') as device:
         "service": {
             "https": False,
             "ssh": False,
-            "ping": False
+            "ping": True
         },
         "sip": [],
         "smac": [],
         "ipv4_address_mode_config": {
-            "address_mode": 0,
-            "dhcp_client_setting": {}
+            "address_mode": 0
         },
         "ipv6_address_mode_config": {
-            "address_mode": 0,
-            "dhcp_client_setting": {}
+            "dhcp_client_setting": {},
+            "address_mode": 0
         },
-        "ip_addresses": []
+        "ip_addresses": [
+            "100.75.131.19/29"
+        ],
+        "desc": "",
+        "level": 100,
+        "otherName": "到省里"
     }
 }
-    # enable_data = copy.deepcopy(disable_data)
-    # enable_data['val']['enable'] = True
 
-    enable_data = {
-    "id": "GE0_3",
+    up_interface = {
+    "id": "GE0_9",
     "val": {
         "linkType": 0,
-        "name": "GE0_3",
+        "mtus": [
+            1500,
+            0,
+            0,
+            0
+        ],
+        "name": "GE0_9",
         "type": 3,
         "enabled": True,
         "vltype": "VPP",
@@ -314,200 +373,43 @@ with TGFW('10.113.55.83', 'admin', 'Ngfw@123') as device:
         "service": {
             "https": False,
             "ssh": False,
-            "ping": False
+            "ping": True
         },
         "sip": [],
         "smac": [],
         "ipv4_address_mode_config": {
-            "address_mode": 0,
-            "dhcp_client_setting": {}
+            "address_mode": 0
         },
         "ipv6_address_mode_config": {
-            "address_mode": 0,
-            "dhcp_client_setting": {}
+            "dhcp_client_setting": {},
+            "address_mode": 0
         },
-        "ip_addresses": []
-    }
-}
-    
-    haswitch = {
-    "id": 1,
-    "val": {
-        "forceSwitch": True
-    }
-}
-    number = 200
-
-    policy1 = {
-    "id": 1,
-    "val": {
-        "enable": True,
-        "session_switch": False,
-        "action": 1,
-        "session_time": 0,
-        "policy_group": "全部",
+        "ip_addresses": [
+            "100.75.131.19/29"
+        ],
         "desc": "",
-        "szone": "any",
-        "dzone": "any",
-        "src_mac": [
-            {
-                "addr_name": "any"
-            }
-        ],
-        "src_dns": [
-            {
-                "dns_name": "any"
-            }
-        ],
-        "dst_mac": [
-            {
-                "addr_name": "any"
-            }
-        ],
-        "dst_dns": [
-            {
-                "dns_name": "any"
-            }
-        ],
-        "src_geo": [],
-        "dst_geo": [],
-        "name": "1",
-        "log": True,
-        "src_addr": [
-            {
-                "addr_name": "any",
-                "is_group": False
-            }
-        ],
-        "dst_addr": [
-            {
-                "addr_name": "any",
-                "is_group": False
-            }
-        ],
-        "service": [
-            {
-                "service_name": "any",
-                "is_group": False
-            }
-        ],
-        "applist": [],
-        "userlist": [],
-        "app_tag_name": [],
-        "sec_obj_data": [
-            {
-                "profile_id": 1,
-                "profile_name": "qzgaj",
-                "model_name": "av"
-            },
-            {
-                "profile_id": 1001,
-                "profile_name": "qzgaj",
-                "model_name": "ips"
-            },
-            {
-                "profile_id": 1,
-                "profile_name": "恶意域名",
-                "model_name": "urlFilter"
-            },
-            {
-                "profile_id": 1,
-                "profile_name": "qzgaj",
-                "model_name": "dga"
-            }
-        ]
+        "level": 100,
+        "otherName": "到省里"
     }
 }
-    
-    policy2 = {
-    "id": 1,
-    "val": {
-        "enable": True,
-        "session_switch": False,
-        "action": 1,
-        "session_time": 0,
-        "policy_group": "全部",
-        "desc": "",
-        "szone": "any",
-        "dzone": "any",
-        "src_mac": [
-            {
-                "addr_name": "any"
-            }
-        ],
-        "src_dns": [
-            {
-                "dns_name": "any"
-            }
-        ],
-        "dst_mac": [
-            {
-                "addr_name": "any"
-            }
-        ],
-        "dst_dns": [
-            {
-                "dns_name": "any"
-            }
-        ],
-        "src_geo": [],
-        "dst_geo": [],
-        "name": "1",
-        "log": True,
-        "src_addr": [
-            {
-                "addr_name": "any",
-                "is_group": False
-            }
-        ],
-        "dst_addr": [
-            {
-                "addr_name": "any",
-                "is_group": False
-            }
-        ],
-        "service": [
-            {
-                "service_name": "any",
-                "is_group": False
-            }
-        ],
-        "applist": [],
-        "userlist": [],
-        "app_tag_name": [],
-        "sec_obj_data": [
-            {
-                "profile_id": 1,
-                "profile_name": "qzgaj",
-                "model_name": "av"
-            },
-            {
-                "profile_id": 1002,
-                "profile_name": "allrule",
-                "model_name": "ips"
-            },
-            {
-                "profile_id": 1,
-                "profile_name": "恶意域名",
-                "model_name": "urlFilter"
-            },
-            {
-                "profile_id": 1,
-                "profile_name": "qzgaj",
-                "model_name": "dga"
-            }
-        ]
-    }
-}
-
-    while number > 0:
-        # d = json.dumps(disable_data)
-        # e = json.dumps(enable_data)
-        device.request('put', '/api/v1/intf', headers=headers, data=json.dumps(disable_data))
-        time.sleep(30)
-        device.request('put', '/api/v1/intf', headers=headers, data=json.dumps(enable_data))
-        time.sleep(30)
-        number -= 1
+    print(device.token )
+    # while number > 0:
+    #     # print(device.token)
+    #     r1 = device.request('put', '/api/v1/intf', headers=headers, data=json.dumps(down_interface))
+    #     if r1 is None:
+    #         time.sleep(15)
+    #     else:
+    #         print(r1)
+    #         break  
+    #     r2 = device.request('put', '/api/v1/intf', headers=headers, data=json.dumps(up_interface))
+    #     if r2 is None:
+    #         time.sleep(15)
+    #     else:
+    #         print(r2)
+    #         break
+    #     number -= 1
+    #     print(number)
+# for i in range(1, 5):
 
     #若需要实现批量添加配置，则需要考虑配置生成
 

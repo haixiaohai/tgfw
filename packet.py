@@ -2,7 +2,7 @@
 生成报文，修改报文内容，发送报文，分析报文
 '''
 
-from scapy.all import IP, ICMP, UDP, TCP, send, fragment, RandIP
+from scapy.all import IP, ICMP, UDP, TCP, send, fragment, RandIP, rdpcap, IPv6, Ether, sendp
 import re, random
 
 
@@ -195,7 +195,20 @@ def winnuke_fragment_send(target_ip : str, count : int = 1) :
         send(packet)
     return
 
-
+def syn_packet(target_ip : str, count : int = 1) -> str:
+    # 发送syn包
+    packet = IP(dst=target_ip)/TCP(dport=80, sport=random.randint(1024,65535), flags='S', seq=1234)
+    for i in range(count):
+        send(packet)
 
 if __name__ == '__main__':
-    land_fragment_send('10.113.53.206', count=2)
+    packets = rdpcap('2.pcap')
+
+    for packet in packets:
+        # print(packet.show())
+        # print(bytes(packet))
+        if packet[IPv6].src == '3001:100:100:100::200':
+            packet[Ether].src = '00:50:56:88:9D:33'
+            packet[Ether].dst = 'c4:a5:59:3e:15:19'
+
+            sendp(packet)

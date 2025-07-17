@@ -6,9 +6,9 @@ output_file = 'D:\安恒信息\LMT\现网问题\LMT_BUG_CURRENT_STATUS.xlsx'
 input_file2 = 'D:\安恒信息\LMT\现网问题\LMT_BUG_LAST_WEEK_STATUS.xlsx'
 
 bug_sheets = [
-    # ("2023 Q2现网问题闭环","问题链接"), 
-    # ("2023 Q3现网问题闭环","问题链接"),
-    # ("2023 Q4现网问题闭环","问题链接"),
+    ("2023 Q2现网问题闭环","问题链接"), 
+    ("2023 Q3现网问题闭环","问题链接"),
+    ("2023 Q4现网问题闭环","问题链接"),
     ("2024 Q1现网问题闭环","问题链接"),
     ("2024 Q2现网问题闭环","禅道链接"),
     ("2024 Q3现网问题闭环","禅道链接"),
@@ -66,10 +66,14 @@ def get_bug_status(bug_ids):
     for bug in bug_ids.values: # bug是一个list，包含bug id和是否紧急
         mysql_bug_df = pandas.read_sql_query(f'SELECT id,title,assignedto,status,substatus FROM zt_bug WHERE id={bug[0]}', engine)  # 根据bug id查询bug状态，返回一个df
         # 需要根据BUG的status和substatus公共判断BUG是否关闭
-        if mysql_bug_df.iloc[0,4] == '10':
-            rst_df.loc[len(rst_df)] = [bug[0], mysql_bug_df.iloc[0,1], mysql_bug_df.iloc[0,2], bug[1], "closed"]
-        else:
-            rst_df.loc[len(rst_df)] = [bug[0], mysql_bug_df.iloc[0,1], mysql_bug_df.iloc[0,2], bug[1], mysql_bug_df.iloc[0,3]]
+        print(bug[0],end="\n")
+        print(mysql_bug_df.iloc[0,4])
+        if mysql_bug_df.iloc[0,4]:
+
+            if mysql_bug_df.iloc[0,4] == '10':
+                rst_df.loc[len(rst_df)] = [bug[0], mysql_bug_df.iloc[0,1], mysql_bug_df.iloc[0,2], bug[1], "closed"]
+            else:
+                rst_df.loc[len(rst_df)] = [bug[0], mysql_bug_df.iloc[0,1], mysql_bug_df.iloc[0,2], bug[1], mysql_bug_df.iloc[0,3]]
     return rst_df
 
 def compare_df(df1, df2):

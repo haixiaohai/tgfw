@@ -2,12 +2,11 @@
 常用工具集
 '''
 
-import re
+import re, random, string
 
 def trans_ip_form(input_ip):
     '''
     十进制转换成点分十进制或点分十进制转换成十进制
-
     '''
 
     if isinstance(input_ip, int):
@@ -35,7 +34,6 @@ def trans_ip_form(input_ip):
         else:
             raise ValueError('IPv4地址格式不正确')
 
-
 def generate_ipv4_list(base_ip, num, step=1):
     '''
     生成IPv4地址列表
@@ -47,7 +45,6 @@ def generate_ipv4_list(base_ip, num, step=1):
         ret_list.append(trans_ip_form(dec_base_ip + i * step))
 
     return ret_list
-
 
 def nat64addr(prefix, v4addr):
     '''
@@ -69,7 +66,6 @@ def nat64addr(prefix, v4addr):
 
     return ':'.join(v6addr_list)
 
-
 def nptv6_addr_trans():
     '''
     nptv6地址转换
@@ -77,7 +73,6 @@ def nptv6_addr_trans():
 
     
     return
-
 
 def hex_to_ascii(hex_string):
     # 16进制字符串转ASCII字符串
@@ -92,3 +87,16 @@ def hex_to_ascii(hex_string):
     ascii_string = bytes_object.decode("ascii", errors="replace")
     
     return ascii_string
+
+def generate_random_domainName_obj(self,max_label_length = 63, max_level = 5):
+    # 生成随机域名
+    # label的长度最长=63
+    # 域名的长度最长=255
+    # 域名层级在3,4,5之间随机
+    
+    tld_domainname = ['.com', '.net', '.org', '.edu', '.gov', '.info', '.mail', '.cn']
+    
+    return  '.'.join([''.join((random.choice(string.ascii_letters).lower() for _ in range(random.randint(1,max_label_length)))) \
+            for _ in range(2, max_level)]) +\
+            random.choice(tld_domainname)
+

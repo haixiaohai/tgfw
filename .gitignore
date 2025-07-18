@@ -1,2 +1,8 @@
 p.py
 precommit.py
+.venv/
+__pycache__/
+.pytest_cache/
+.vscode/
+*.pyc
+*.pyo

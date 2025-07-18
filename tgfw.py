@@ -1,15 +1,17 @@
 #连接TGFW
 
-import requests, base64, ipaddress, copy, random, re, pytesseract
+import requests, base64, ipaddress, copy, random, re, pytesseract, time
 from requests.packages.urllib3.exceptions import InsecureRequestWarning # type: ignore
 from tools import * # type: ignore
 from PIL import Image
 from io import BytesIO
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+import os
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
+os.environ['TESSDATA_PREFIX'] = r'C:\Program Files\Tesseract-OCR\tessdata'
 
 class TGFW:
     # 操作TGFW设备
@@ -29,7 +31,8 @@ class TGFW:
         return f'https://{self.ip}:{self.port}{uri}'
     
     def request(self, method:str, uri:str, **kwargs) -> tuple:
-        #若成功下发，返回操作成功的对象name，若失败，返回的status_code和message
+        # get/post/put/delete
+        # 为了配合场景测试，如果是POST请求，需要把对象的名称返回
         method = getattr(requests, method.lower())
         header = kwargs['headers'] if 'headers' in kwargs else {"Content-Type": "application/json"}  
         data = kwargs['data'] if 'data' in kwargs else {}
@@ -229,6 +232,8 @@ class TGFW:
 
         # 获取公钥，第一步先从HTML中解析到公钥文件名，然后再get公钥内容
         r = self.request('get', '', headers={'Content-Type': 'text/html'})
+        if r.status_code != 200:
+            raise Exception('连接设备失败，手动检查')
         public_key_filename = re.findall(r'ras_public_key.\d+.js', r.text)[0]
         js_text = self.request('get', '/js/'+public_key_filename, headers={'Content-Type': 'application/javascript'}).text
         lines = re.findall(r"'(.*?)'", js_text, re.DOTALL) 
@@ -260,6 +265,7 @@ class TGFW:
         img = Image.open(BytesIO(img_bytes))
         text = pytesseract.image_to_string(img)   
 
+        # 登录获取token
         data = {
             "id": self.username,
             "val": {
@@ -275,8 +281,6 @@ class TGFW:
         response = self.request('put', '/api/v1/auth', data=data)
         if response.status_code == 200:         
             return response.json()['token']
-        else:           
-            return response.status_code, response.text
         
     def __enter__(self):
         self.token = self._get_token()
@@ -309,36 +313,41 @@ class render:
 with TGFW('10.113.55.147', 'admin', 'Ngfw@123') as device:
 
     #需要判断有没有正常获取到token
-
+    if not device.token:
+        raise Exception('获取token失败，请检查设备连接和登录信息')
+    
     headers = {'Authorization': f'Bearer {device.token}',
                'Content-Type': 'application/json',
                'charset': 'utf-8'
                 }
     
     # 循环禁用启用可以用request方法写
-    number = 100
+    number = 50
     down_interface =  {
-    "id": "GE0_9",
+    "id": "GE0_5.202",
     "val": {
+        "vltype": "VPP",
         "linkType": 0,
+        "name": "GE0_5.202",
+        "desc": "",
+        "type": 1,
+        "mode": "Route",
+        "enabled": False,
+        "level": 100,
+        "ipv4_gateway": "",
+        "ipv4_reverse_path": False,
+        "ipv6_reverse_path": False,
+        "ipv6_gateway": "",
         "mtus": [
             1500,
             0,
             0,
             0
         ],
-        "name": "GE0_9",
-        "type": 3,
-        "enabled": False,
-        "vltype": "VPP",
-        "mode": "Route",
-        "service": {
-            "https": False,
-            "ssh": False,
-            "ping": True
+        "sub": {
+            "parent_name": "GE0_5",
+            "sub_id": 202
         },
-        "sip": [],
-        "smac": [],
         "ipv4_address_mode_config": {
             "address_mode": 0
         },
@@ -347,68 +356,78 @@ with TGFW('10.113.55.147', 'admin', 'Ngfw@123') as device:
             "address_mode": 0
         },
         "ip_addresses": [
-            "100.75.131.19/29"
+            "10.202.1.252/24"
         ],
+        "service": {
+            "https": False,
+            "ssh": False,
+            "ping": False
+        },
+        "sip": [],
+        "smac": []
+    }
+}
+    up_interface = {
+    "id": "GE0_5.202",
+    "val": {
+        "vltype": "VPP",
+        "linkType": 0,
+        "name": "GE0_5.202",
         "desc": "",
+        "type": 1,
+        "mode": "Route",
+        "enabled": True,
         "level": 100,
-        "otherName": "到省里"
+        "ipv4_gateway": "",
+        "ipv4_reverse_path": False,
+        "ipv6_reverse_path": False,
+        "ipv6_gateway": "",
+        "mtus": [
+            1500,
+            0,
+            0,
+            0
+        ],
+        "sub": {
+            "parent_name": "GE0_5",
+            "sub_id": 202
+        },
+        "ipv4_address_mode_config": {
+            "address_mode": 0
+        },
+        "ipv6_address_mode_config": {
+            "dhcp_client_setting": {},
+            "address_mode": 0
+        },
+        "ip_addresses": [
+            "10.202.1.252/24"
+        ],
+        "service": {
+            "https": False,
+            "ssh": False,
+            "ping": False
+        },
+        "sip": [],
+        "smac": []
     }
 }
 
-    up_interface = {
-    "id": "GE0_9",
-    "val": {
-        "linkType": 0,
-        "mtus": [
-            1500,
-            0,
-            0,
-            0
-        ],
-        "name": "GE0_9",
-        "type": 3,
-        "enabled": True,
-        "vltype": "VPP",
-        "mode": "Route",
-        "service": {
-            "https": False,
-            "ssh": False,
-            "ping": True
-        },
-        "sip": [],
-        "smac": [],
-        "ipv4_address_mode_config": {
-            "address_mode": 0
-        },
-        "ipv6_address_mode_config": {
-            "dhcp_client_setting": {},
-            "address_mode": 0
-        },
-        "ip_addresses": [
-            "100.75.131.19/29"
-        ],
-        "desc": "",
-        "level": 100,
-        "otherName": "到省里"
-    }
-}
-    print(device.token )
-    # while number > 0:
-    #     # print(device.token)
-    #     r1 = device.request('put', '/api/v1/intf', headers=headers, data=json.dumps(down_interface))
-    #     if r1 is None:
-    #         time.sleep(15)
-    #     else:
-    #         print(r1)
-    #         break  
-    #     r2 = device.request('put', '/api/v1/intf', headers=headers, data=json.dumps(up_interface))
-    #     if r2 is None:
-    #         time.sleep(15)
-    #     else:
-    #         print(r2)
-    #         break
-    #     number -= 1
-    #     print(number)
+    while number > 0:
+        # print(device.token)
+        r1 = device.request('put', '/api/v1/intf', headers=headers, data=down_interface)
+        if r1.status_code == 200:
+            time.sleep(120)
+        else:
+            print(r1)
+            break  
+        r2 = device.request('put', '/api/v1/intf', headers=headers, data=up_interface)
+        if r2.status_code == 200:
+            time.sleep(120)
+        else:
+            print(r2)
+            break
+        number -= 1
+        print(number)
 # for i in range(1, 5):
 
     #若需要实现批量添加配置，则需要考虑配置生成

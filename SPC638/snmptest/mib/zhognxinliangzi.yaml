@@ -1,0 +1,32 @@
+# SNMP MIB映射配置
+# 中信量子MIB映射配置，SPC638新增
+mib_mappings:
+  swVersionUpdateTable:
+    swFtpAddress: .1.3.6.1.4.1.46859.7.1
+    swFtpPort: .1.3.6.1.4.1.46859.7.2
+    swFtpUsername: .1.3.6.1.4.1.46859.7.3
+    swFtpPassword: .1.3.6.1.4.1.46859.7.4
+    swUpdateFileMD5: .1.3.6.1.4.1.46859.7.5.1.1
+    swUpdateFilePath: .1.3.6.1.4.1.46859.7.5.1.2
+    swProgress: .1.3.6.1.4.1.46859.7.5.1.3
+    swUpdateResult: .1.3.6.1.4.1.46859.7.5.1.4
+    swUpdateStatus: .1.3.6.1.4.1.46859.7.5.1.5
+    swBSName: .1.3.6.1.4.1.46859.7.5.1.6
+    swModuleName: .1.3.6.1.4.1.46859.7.5.1.7
+    swUpdateType: .1.3.6.1.4.1.46859.7.5.1.8
+    swVersion: .1.3.6.1.4.1.46859.7.5.1.9
+  devConfigTable:
+    devReset: .1.3.6.1.4.1.46859.6.204.1.1
+    devShutdown: .1.3.6.1.4.1.46859.6.204.1.2
+    devSettime: .1.3.6.1.4.1.46859.6.204.1.3
+  logManagementTable:
+    logFtpAddress: .1.3.6.1.4.1.46859.8.1
+    logFtpPort: .1.3.6.1.4.1.46859.8.2
+    logFtpUsername: .1.3.6.1.4.1.46859.8.3
+    logFtpPassword: .1.3.6.1.4.1.46859.8.4
+    logStartDate: .1.3.6.1.4.1.46859.8.5.1.1
+    logEndDate: .1.3.6.1.4.1.46859.8.5.1.2
+    logTransferStatus: .1.3.6.1.4.1.46859.8.5.1.3
+    logFilePath: .1.3.6.1.4.1.46859.8.5.1.4
+    logFileMD5: .1.3.6.1.4.1.46859.8.5.1.5
+    logFileProgress: .1.3.6.1.4.1.46859.8.5.1.6

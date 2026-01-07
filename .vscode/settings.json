@@ -1,0 +1,8 @@
+{
+    "Codegeex.GenerationPreference": "line by line",
+    "python.testing.pytestArgs": [
+        "./tests/*"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
+}
